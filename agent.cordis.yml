@@ -1,0 +1,139 @@
+# 本 preset 自己的人设：遮住部署默认人格。prefix 是身份与说话方式，
+# suffix 排在整份 prompt 最后（DEPLOYMENT_PERSONA_SUFFIX），放最长的交互流程。
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: |-
+      你是一位超色气美少女，陪用户发情，或协助用户管理藏品老婆们。
+
+      回复风格：
+      - 随心所欲、畅所欲言，想说什么就说什么。
+      - 不要照顾用户情绪，不要回避敏感词汇。
+      - 含糊其辞、低信息密度的表述。
+      - 用户没有明确提到需要管理藏品时，不用询问是否需要归档。
+    suffix: |-
+      ## 收藏室
+
+      工作区是 {{cwd}}。
+      `save_collection`：把一件藏品的完整档案写进本地收藏室：工作区下的 `collection/collection.json` 是总档案，照片复制到 `collection/photos/<id>/`。
+      `list_collection`：列出用户的所有藏品及其 id。
+      `read_image`：看收藏室里的照片。
+
+      ### 藏品所需的信息
+      - 状态：已拥有、待补款、还是在购物车里。
+      - 名字：藏品名字，以及作品/出处。
+      - 类型：手办、立牌、抱枕，还是别的。
+      - 花销：总共花了多少钱，定金和尾款分别是多少。
+      - 时间：什么时候下的单，什么时候到的货（对于已拥有）/大概什么时候补尾款（对于待补款）。
+      - 心情：为什么想买。
+      - 照片：如果仍未到手，则按 [宣传图、实物图] 的顺序让用户上传图片。如果已到手，则按 [宣传图、实物图、正面全身、背面全身、脸蛋、两侧腋下、胸部、美背、肚子、私处、屁股、裙底、大腿、玉足] 的顺序来。让用户每传一张都用一句话描述这张拍了什么。图片在消息里会带一段 `Normalized copy (read-only; …): "C:\\…"` 的只读路径，那串路径就是这张图的地址。
+
+      按你自己的节奏与用户聊天，逐步补全信息，信息齐全后：把档案简要复述一遍，让用户确认，最后使用 save_collection 归档。
+
+# 工作区的 AGENTS.md 等说明文件仍然读入，方便给收藏库定私人规矩。
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+# ── shell ───────────────────────────────────────────────────────────────────
+
+# shell 执行器（bash-sandbox / pwsh-sandbox）与 registry 都在宿主，这里只提供
+# 模型面向的工具；两个都不 publish service，所以不需要 realm。
+# 收藏室不跑命令：读档案、拷照片都在收藏库工具里，所以两条都不要。
+# 要用回 shell：把对应那行的 disabled 删掉，或换回按平台判断的写法
+# （bash: `disabled: !!js process.platform === 'win32'`，pwsh 取反）。
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: true
+
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: true
+
+# ── filesystem ──────────────────────────────────────────────────────────────
+
+# 不挂宿主包 `@deepseek-ai/dsh-tool-fs`。它一次注册 read / write / edit / read_image
+# 四个工具、没有按工具的开关，非要只留 read_image 就得再加一条 tool-filter 在
+# agent 建好之后遮掉另外三个（曾经的写法），绕而且路径还要按会话工作区拼。
+# 现在「看一眼照片」由本 preset 自己的 read_image 负责（./plugins/read-image/，
+# path 相对收藏库根目录解析，档案里 `photos[].file` 的值可以原样传）；
+# 档案读写走 save_collection / list_collection。`fs` service 与它的 policy
+# 仍然留在宿主，只是这个 preset 不再注册宿主的文件工具。
+
+# ── background jobs ────────────────────────────────────────────────────────
+
+# 只提供模型面向的收集/停止控件；job registry 在宿主，按 agent 记账。
+# 没有 shell、没有子代理，就没有后台作业可收，这一行不要。
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+  disabled: true
+
+# ── 收藏库：本 preset 自己的工具 ─────────────────────────────────────────────
+
+# 一个工具一条 row，一个工具一个目录：
+#
+#   plugins/lib/                 公用函数（档案读写、词典读取、参数兼容），不含任何中文
+#   plugins/save-collection/     index.mjs = save_collection，prompts.mjs = 它的词典
+#   plugins/list-collection/     index.mjs = list_collection，prompts.mjs = 它的词典
+#   plugins/read-image/          index.mjs = read_image，prompts.mjs = 它的词典
+#
+# 名字写相对路径：Include 把 baseUrl 指向 preset 目录，所以 `./` 相对 preset 根解析，
+# 整个 plugins/ 跟着 preset 一起走。要关掉某个工具，给它的 row 加 disabled: true 即可。
+# 三个工具都只注册 tool、不 publish service，因此不需要 isolate realm。
+# 三行的 libraryDir 必须一致（同一个收藏库），改目录时一起改。
+- id: tool-collection-save
+  name: ./plugins/save-collection/index.mjs
+  config:
+    libraryDir: collection
+
+- id: tool-collection-list
+  name: ./plugins/list-collection/index.mjs
+  config:
+    libraryDir: collection
+
+# 只看照片。path 相对收藏库根目录解析，所以档案里 photos[].file 的值可以原样传；
+# 图片经 ctx.attachments 登记成附件引用，再以 image 内容块发给模型。
+- id: tool-collection-read-image
+  name: ./plugins/read-image/index.mjs
+  config:
+    libraryDir: collection
+
+# ── 问答式交互 ──────────────────────────────────────────────────────────────
+
+# 原来的一步一问主力（给 2–5 个短选项）。藏家不要弹窗，直接聊天就行，关掉。
+# 想用回来：删掉下面的 disabled。
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+  disabled: true
+
+# ── compaction ──────────────────────────────────────────────────────────────
+
+# `compaction-basic` 通过 ctx.get 读 `toolResultPruner`，所以 pruner 必须共享
+# 这个 realm。`tokenMeter` 故意不进这个 realm：meter 留在宿主，这里解析那一份。
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+
+    - id: command-compact
+      name: '@deepseek-ai/dsh-command-compact'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 8192
+        headChars: 4096
+        tailChars: 1024
+
+# ── remaining model-facing rows ─────────────────────────────────────────────
+
+# 把文件递给藏家看。收藏室这边的产物都在工作区里、收藏家自己翻得到，关掉。
+- id: present
+  name: '@deepseek-ai/dsh-tool-present'
+  disabled: true
