@@ -24,7 +24,7 @@ export const prompts = {
   // ── 工具总述 ──────────────────────────────────────────────────────────────
 
   // read_collection.description ｜ 模型靠它判断「读档案该用它、name/id 怎么填、拿到的是什么」
-  'read_collection.description': `读一件藏品的完整档案，字段名是中文（名称、类型、状态、购买原因、总价、定金、尾款、下单时间、补款时间/预计补款时间、到货时间、照片、笔记）。id 与 name 二选一，两个都给时以 id 为准；name 忽略空格和大小写。照片那一行给的是每个部位的路径，想看图片本体就把路径传给 read_image。`,
+  'read_collection.description': `读一件藏品的完整档案。id 与 name 二选一，两个都给时以 id 为准；name 忽略空格和大小写。`,
 
   // ── 参数 ──────────────────────────────────────────────────────────────────
 
@@ -70,7 +70,7 @@ export const prompts = {
   'result.line.photos': `照片（可用 read_image 工具查看照片）：{value}`,
 
   // result.line.notes ｜ 模型自己的笔记
-  'result.line.notes': `你的笔记：{value}`,
+  'result.line.notes': `你（色气美少女）的笔记：{value}`,
 
   // result.photo ｜ 单张照片：部位、路径（可直接喂 read_image）、用户当时的描述
   'result.photo': `[部位：{part}，路径：{file}，用户感想：{description}]`,

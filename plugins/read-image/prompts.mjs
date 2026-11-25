@@ -20,12 +20,12 @@ export const prompts = {
   // ── 工具总述 ──────────────────────────────────────────────────────────────
 
   // read_image.description ｜ 模型靠它判断「什么时候该看、path 怎么填、一次看几张」
-  'read_image.description': `看一眼收藏室里的照片，把图片本体给模型看。path 填收藏库里的照片路径：collection.json 里 photos[].file 的值（相对收藏库根目录，形如 photos/<id>/01-正面全身.jpg），消息里图片那段只读路径的绝对路径也认。一次只看一张，多看几张就多调几次。只支持 PNG/JPEG/WebP/GIF。`,
+  'read_image.description': `看收藏室里的照片本体。path 填 read_collection 提供的照片路径，一次只看一张。只支持 PNG/JPEG/WebP/GIF。`,
 
   // ── 参数 ──────────────────────────────────────────────────────────────────
 
   // read_image.parameters.path ｜ 路径的三种写法，外加「从哪抄」
-  'read_image.parameters.path': `照片路径：相对收藏库根目录，例如 photos/20261124-221606/02-正面上半身.png；省略 photos/ 前缀（20261124-221606/02-正面上半身.png）或工作区相对路径也认；消息里上传图片的只读路径（绝对路径）一样认。`,
+  'read_image.parameters.path': `照片路径。`,
 
   // ── 成功返回的说明（紧挨着图片本体进对话）──────────────────────────────
 
@@ -38,7 +38,7 @@ export const prompts = {
   // ── 报错正文 ──────────────────────────────────────────────────────────────
 
   // errors.emptyPath ｜ path 传了空串
-  'errors.emptyPath': `path 不能为空：要填收藏库里的照片路径，例如 photos/<id>/01-正面全身.jpg`,
+  'errors.emptyPath': `path 不能为空：要填 read_collection 里的照片路径`,
 
   // errors.notFound ｜ 按几种写法都没找到：列出找过的位置和收藏库里现有的照片，模型照着改
   'errors.notFound': `找不到这张图片：{given}\n找过这些位置：\n{tried}\n收藏库：{library}\n{known}`,
