@@ -15,8 +15,9 @@
       ## 收藏室
 
       工作区是 {{cwd}}。
-      `save_collection`：把一件藏品的完整档案写进本地收藏室：工作区下的 `collection/collection.json` 是总档案，照片复制到 `collection/photos/<id>/`。
+      `save_collection`：把一件藏品的完整档案写进本地收藏室：工作区下的 `collection/collection.json` 是总档案，照片复制到 `collection/photos/<id>/`。名字不能和已有藏品重复；要改旧档案就带 overwriteId。
       `list_collection`：列出用户的所有藏品及其 id。
+      `read_collection`：按名字或 id 读一件藏品的档案，字段用中文分行回给你（照片只给路径）。
       `read_image`：看收藏室里的照片。
 
       ### 藏品所需的信息
@@ -73,15 +74,16 @@
 
 # 一个工具一条 row，一个工具一个目录：
 #
-#   plugins/lib/                 公用函数（档案读写、词典读取、参数兼容），不含任何中文
+#   plugins/lib/                 公用函数（档案读写、名字判重、参数兼容），不含任何对话文本
 #   plugins/save-collection/     index.mjs = save_collection，prompts.mjs = 它的词典
 #   plugins/list-collection/     index.mjs = list_collection，prompts.mjs = 它的词典
+#   plugins/read-collection/     index.mjs = read_collection，prompts.mjs = 它的词典
 #   plugins/read-image/          index.mjs = read_image，prompts.mjs = 它的词典
 #
 # 名字写相对路径：Include 把 baseUrl 指向 preset 目录，所以 `./` 相对 preset 根解析，
 # 整个 plugins/ 跟着 preset 一起走。要关掉某个工具，给它的 row 加 disabled: true 即可。
-# 三个工具都只注册 tool、不 publish service，因此不需要 isolate realm。
-# 三行的 libraryDir 必须一致（同一个收藏库），改目录时一起改。
+# 四个工具都只注册 tool、不 publish service，因此不需要 isolate realm。
+# 四行的 libraryDir 必须一致（同一个收藏库），改目录时一起改。
 - id: tool-collection-save
   name: ./plugins/save-collection/index.mjs
   config:
@@ -89,6 +91,13 @@
 
 - id: tool-collection-list
   name: ./plugins/list-collection/index.mjs
+  config:
+    libraryDir: collection
+
+# 按名字或 id 读一件藏品的完整档案。字段名换回人设里的中文，照片只给路径。
+# 名字的比较口径（去掉空白、忽略大小写）与 save_collection 拦重名时同一套。
+- id: tool-collection-read
+  name: ./plugins/read-collection/index.mjs
   config:
     libraryDir: collection
 

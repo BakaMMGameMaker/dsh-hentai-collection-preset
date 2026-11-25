@@ -29,7 +29,7 @@ export const prompts = {
   // ── 工具总述 ──────────────────────────────────────────────────────────────
 
   // save_collection.description ｜ 模型靠它判断「要不要调这个工具、什么时候调、一次传多少」
-  'save_collection.description': `把一件藏品的完整档案写进本地收藏库（工作区 collection/collection.json，照片复制到 collection/photos/<id>/）。用户确认过整份档案之后调用；一次传入全部已知信息。省略 overwriteId 是新建，传入已有 id 是覆盖更新，覆盖更新前需浏览过旧档案`,
+  'save_collection.description': `把一件藏品的完整档案写进本地收藏库（工作区 collection/collection.json，照片复制到 collection/photos/<id>/）。用户确认过整份档案之后调用；一次传入全部已知信息。省略 overwriteId 是新建，传入已有 id 是覆盖更新，覆盖更新前需浏览过旧档案。名字不能和别的藏品重复：撞名时带上那件的 overwriteId 就是改它，否则要换个名字。`,
 
   // ── 参数 ──────────────────────────────────────────────────────────────────
 
@@ -41,9 +41,6 @@ export const prompts = {
 
   // save_collection.parameters.kind ｜ 类型：给模型一个分类候选表
   'save_collection.parameters.kind': `类型：手办 | 立牌 | 抱枕 | 挂画 | 徽章 | 其他`,
-
-  // save_collection.parameters.kindDetail ｜ 类型补充：比例、尺寸这类写不进分类的细节（没用，下次见到记得删掉）
-  'save_collection.parameters.kindDetail': `不用填`,
 
   // save_collection.parameters.price ｜ 花销
   'save_collection.parameters.price': `藏品的开销`,
@@ -173,6 +170,12 @@ export const prompts = {
 
   // errors.unknownId ｜ overwriteId 指向不存在的藏品（{known} 由 words.emptyLibrary 兜底）
   'errors.unknownId': `没有 id 为 {wanted} 的藏品，现有 id：{known}。新建一件请省略 overwriteId。`,
+
+  // errors.duplicateName ｜ 新建时名字撞了已有藏品，但那件连 id 都没有（手改坏的档案）
+  'errors.duplicateName': `已经有一件叫「{name}」的藏品，收藏库里名字不能重复，换个名字再存。`,
+
+  // errors.duplicateNameWithId ｜ 撞了已有藏品：点明是改它（带 overwriteId）还是换名字
+  'errors.duplicateNameWithId': `已经有一件叫「{name}」的藏品（id：{id}），收藏库里名字不能重复：要改那一件就带 overwriteId: {id}，新建请换个名字。`,
 
   // errors.tooManyInSecond ｜ 同一秒内 id 用尽
   'errors.tooManyInSecond': `同一秒内创建的藏品过多，请稍后重试`,

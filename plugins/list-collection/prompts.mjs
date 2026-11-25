@@ -23,7 +23,7 @@ export const prompts = {
   // ── 工具总述 ──────────────────────────────────────────────────────────────
 
   // list_collection.description ｜ 模型靠它判断「什么时候该列一览、拿到 id 干什么」
-  'list_collection.description': `列出收藏库里每件藏品的名字和 id（每行「名字 · id」，按入库顺序）。调它可拿藏品 id；想看完整档案就读 collection.json`,
+  'list_collection.description': `列出收藏库里每件藏品的名字和 id（每行「名字 · id」，按入库顺序）。调它可拿藏品 id；想看完整档案就用 read_collection 按名字或 id 读。`,
 
   // ── 成功返回的文本（会进对话历史）─────────────────────────────────────────
 

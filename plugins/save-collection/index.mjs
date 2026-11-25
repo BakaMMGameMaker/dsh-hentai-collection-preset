@@ -12,6 +12,7 @@
 import { chmod, copyFile, mkdir, open, stat } from 'node:fs/promises'
 import { extname, isAbsolute, join, resolve } from 'node:path'
 import { archivePathsOf, readArchive, workspaceOf, writeArchive, ARCHIVE_VERSION } from '../lib/archive.mjs'
+import { itemId, nameKey } from '../lib/items.mjs'
 import { createPrompt, format } from '../lib/prompt.mjs'
 import { asRecord, optionalText } from '../lib/values.mjs'
 import { prompts } from './prompts.mjs'
@@ -50,7 +51,6 @@ export function apply(ctx, config) {
         name: { type: 'string', description: prompt('save_collection.parameters.name') },
         status: { type: 'string', description: prompt('save_collection.parameters.status') },
         kind: { type: 'string', description: prompt('save_collection.parameters.kind') },
-        kindDetail: { type: 'string', description: prompt('save_collection.parameters.kindDetail') },
         price: {
           type: 'object',
           additionalProperties: false,
@@ -111,7 +111,6 @@ export function apply(ctx, config) {
       const itemName = requiredText(input.name, prompt('labels.name'))
       const status = requiredText(input.status, prompt('labels.status'))
       const kind = optionalText(input.kind)
-      const kindDetail = optionalText(input.kindDetail)
       const notes = optionalText(input.notes)
       const motivation = optionalText(input.motivation)
       const orderedAt = optionalText(input.orderedAt)
@@ -131,6 +130,9 @@ export function apply(ctx, config) {
 
       const library = await readArchive(archivePath, prompt)
       const existing = resolveExisting(library.items, input.overwriteId)
+      // 名字是 read_collection 的查询键，所以这里必须拦住重名：再存一件同名的，
+      // 用户按名字读档案时就分不清是哪一件了。比较口径与读取同一套（../lib/items.mjs）。
+      ensureUniqueName(library.items, itemName, existing)
       const id = existing !== undefined ? existing.id : freshId(library.items, now)
 
       const photos = photoInput === null && existing !== undefined && Array.isArray(existing.photos)
@@ -146,7 +148,6 @@ export function apply(ctx, config) {
 
       const patch = {
         ...(provided('kind') ? { kind } : {}),
-        ...(provided('kindDetail') ? { kindDetail } : {}),
         ...(provided('motivation') ? { motivation } : {}),
         ...(provided('notes') ? { notes } : {}),
         ...(provided('orderedAt') || provided('balanceDueAt') || provided('arrivesAt')
@@ -173,7 +174,6 @@ export function apply(ctx, config) {
         // 到处判断字段存不存在。顺序是 默认值 → previous → 本次必填/可选，
         // 后者覆盖前者，所以更新时 id/name/status 一定是新的。
         kind: null,
-        kindDetail: null,
         motivation: null,
         notes: null,
         price: { total: null, deposit: null, balance: null },
@@ -186,6 +186,9 @@ export function apply(ctx, config) {
         createdAt: existing === undefined ? now.toISOString() : (existing.createdAt ?? now.toISOString()),
         updatedAt: now.toISOString(),
       }
+      // kindDetail 已经没有对应入参了；旧档案里残留的这一项在覆盖更新时顺手清掉，
+      // 免得档案里留着一个谁都读不到的字段。
+      delete item.kindDetail
 
       const items = existing === undefined
         ? [...library.items, item]
@@ -219,6 +222,24 @@ export function apply(ctx, config) {
       }
     },
   })
+}
+
+/**
+ * 名字不能和别的藏品重复：read_collection 按名字挑，重名就分不清是哪一件。
+ * 覆盖更新时跳过被更新的那件自身；比较口径见 ../lib/items.mjs（去掉空白、忽略大小写）。
+ * @param items - 档案的 items 数组。
+ * @param wanted - 这次要存的名字（已 trim、非空）。
+ * @param existing - 被更新的那件记录，新建时是 undefined。
+ */
+function ensureUniqueName(items, wanted, existing) {
+  const key = nameKey(wanted)
+  const clash = items.find((entry) => entry !== existing
+    && nameKey(entry === null || typeof entry !== 'object' ? undefined : entry.name) === key)
+  if (clash === undefined) return
+  const clashId = itemId(clash)
+  throw new Error(clashId === null
+    ? format(prompt('errors.duplicateName'), { name: wanted })
+    : format(prompt('errors.duplicateNameWithId'), { name: wanted, id: clashId }))
 }
 
 /** 校验 overwriteId；给了但不存在的 id 是调用错误，不是新建。 */

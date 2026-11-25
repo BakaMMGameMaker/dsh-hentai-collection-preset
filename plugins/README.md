@@ -4,16 +4,20 @@
 
 ```
 plugins/
-  lib/                     公用函数。不含任何会发给模型的文本，也不该出现中文
+  lib/                     公用函数。不含任何会发给模型的文本
     prompt.mjs             createPrompt(字典, 文件名) + format(模板, 值)
     values.mjs             asRecord / optionalText / describe（参数兼容层）
     archive.mjs            收藏库的磁盘布局、读档案、写档案、workspaceOf
+    items.mjs              按 id / 名字找一件藏品，以及「名字相同」的比较口径
   save-collection/
     index.mjs              save_collection：工具定义 + 行为
     prompts.mjs            它自己的词典：会发给模型的每一句话
   list-collection/
     index.mjs              list_collection：只返回 list<name, id>
     prompts.mjs            它自己的词典
+  read-collection/
+    index.mjs              read_collection：按 name 或 id 读一件，字段名换回中文
+    prompts.mjs            它自己的词典（含 result.line.*：每个字段一行）
   read-image/
     index.mjs              read_image：path 相对收藏库根目录解析，图片经
                            ctx.attachments 登记成附件引用，再以 image 内容块返回
@@ -32,6 +36,20 @@ plugins/
 只改 `plugins/<工具>/index.mjs`。读档案失败这类公用逻辑在 `lib/archive.mjs`，
 它要用的三条文案由调用方的字典提供（`errors.readArchive`、`errors.archiveNotJson`、
 `errors.archiveShape`），两个读档案的工具措辞各自独立。
+
+## 名字不能重复
+
+`read_collection` 按名字就能挑中一件，所以 `save_collection` 必须拦住重名——否则
+同一件藏品有两个 id，按名字读就分不清了。比较口径在两处共用 `lib/items.mjs`：
+
+- `nameKey()`：去掉所有空白 + 忽略大小写，所以「初音未来 睡莲」与「初音未来睡莲」
+  算同一个名字；
+- `save_collection` 新建/改名时撞上别的藏品，就报 `errors.duplicateNameWithId`，
+  让模型带那件的 `overwriteId` 去改，或者换个名字；
+- `read_collection` 按名字命中多件（只有手改出来的档案才会）时报
+  `errors.ambiguousName` 并列 id，让调用方改用 id。
+
+`kindDetail` 这个字段已经删掉，旧档案里残留的那一项会在下次覆盖更新时清掉。
 
 ## 加一个工具
 
