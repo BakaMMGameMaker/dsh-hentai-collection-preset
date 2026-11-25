@@ -43,7 +43,7 @@ const KNOWN_PHOTO_LIMIT = 20
 /**
  * 注册 `read_image`。
  * @param ctx - agent scope 的 services。
- * @param config - `libraryDir`：收藏库相对工作区的目录名，必须和另外两个工具那行一致。
+ * @param config - `libraryDir`：收藏库相对工作区的目录名，必须和另外几个工具那行一致。
  */
 export function apply(ctx, config) {
   // 没有附件服务就没有 image 内容块可放，工具不出现（和宿主包 read_image 同一条件）。

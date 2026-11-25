@@ -3,7 +3,7 @@
  *
  * 这里是唯一存放「read_collection 会发给模型的文本」的地方。同目录的 index.mjs
  * 只按 `prompt('键')` 取字符串，不内联任何中文，所以调措辞只改这一个文件。
- * 另外三个工具的字典在 ../save-collection/、../list-collection/、../read-image/。
+ * 另外四个工具的字典在 ../save-collection/、../add-photo/、../list-collection/、../read-image/。
  *
  * 键名就是发送位置：
  *   read_collection.description        工具总述（请求体 tools 数组里的 function.description）

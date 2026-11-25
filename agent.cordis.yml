@@ -15,7 +15,8 @@
       ## 收藏室
 
       工作区是 {{cwd}}。
-      `save_collection`：把一件藏品的完整档案写进本地收藏室：工作区下的 `collection/collection.json` 是总档案，照片复制到 `collection/photos/<id>/`。名字不能和已有藏品重复；要改旧档案就带 overwriteId。
+      `save_collection`：把一件藏品的完整档案写进本地收藏室。名字不能和已有藏品重复；要改旧档案就带 overwriteId。写入前最好和用户确认一下。
+      `add_photo`：往一件已存档的藏品里追加一张照片，不用把整份档案重新 save_collection 一遍。
       `list_collection`：列出用户的所有藏品，每件一行给出名字、id 和状态。
       `read_collection`：按名字或 id 读一件藏品的档案，字段用中文分行返回。
       `read_image`：看收藏室里的照片。
@@ -28,8 +29,6 @@
       - 时间：什么时候下的单，什么时候到的货（对于已拥有的藏品）/大概什么时候补尾款（对于已下单、待补款的藏品）。
       - 心情：为什么想买。
       - 照片：如果仍未到手，则按 [宣传图、实物图] 的顺序让用户上传图片。如果已到手，则按 [宣传图、实物图、正面全身、背面全身、脸蛋、两侧腋下、胸部、美背、肚子、私处、屁股、裙底、大腿、玉足] 的顺序来。让用户每传一张都用一句话描述这张拍了什么。图片在消息里会带一段 `Normalized copy (read-only; …): "C:\\…"` 的只读路径，那串路径就是这张图的地址。
-
-      按你自己的节奏与用户聊天，逐步补全信息，信息齐全后：把档案简要复述一遍，让用户确认，最后使用 save_collection 归档。
 
 # 工作区的 AGENTS.md 等说明文件仍然读入，方便给收藏库定私人规矩。
 - id: agent-instructions
@@ -74,18 +73,27 @@
 
 # 一个工具一条 row，一个工具一个目录：
 #
-#   plugins/lib/                 公用函数（档案读写、名字判重、参数兼容），不含任何对话文本
+#   plugins/lib/                 公用函数（档案读写、名字判重、照片落盘、参数兼容），不含任何对话文本
 #   plugins/save-collection/     index.mjs = save_collection，prompts.mjs = 它的词典
+#   plugins/add-photo/           index.mjs = add_photo，prompts.mjs = 它的词典
 #   plugins/list-collection/     index.mjs = list_collection，prompts.mjs = 它的词典
 #   plugins/read-collection/     index.mjs = read_collection，prompts.mjs = 它的词典
 #   plugins/read-image/          index.mjs = read_image，prompts.mjs = 它的词典
 #
 # 名字写相对路径：Include 把 baseUrl 指向 preset 目录，所以 `./` 相对 preset 根解析，
 # 整个 plugins/ 跟着 preset 一起走。要关掉某个工具，给它的 row 加 disabled: true 即可。
-# 四个工具都只注册 tool、不 publish service，因此不需要 isolate realm。
-# 四行的 libraryDir 必须一致（同一个收藏库），改目录时一起改。
+# 五个工具都只注册 tool、不 publish service，因此不需要 isolate realm。
+# 五行的 libraryDir 必须一致（同一个收藏库），改目录时一起改。
 - id: tool-collection-save
   name: ./plugins/save-collection/index.mjs
+  config:
+    libraryDir: collection
+
+# 往一件已存档的藏品里追加一张照片。补一张图不必把名字、状态、价格、时间全重抄一遍：
+# 它只往那件的 photos 末尾加一条，其余字段不碰。挑藏品按 id 优先、name 忽略空格和
+# 大小写，与 read_collection 同一套口径。
+- id: tool-collection-add-photo
+  name: ./plugins/add-photo/index.mjs
   config:
     libraryDir: collection
 

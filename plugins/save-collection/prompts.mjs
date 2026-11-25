@@ -34,7 +34,7 @@ export const prompts = {
   // ── 参数 ──────────────────────────────────────────────────────────────────
 
   // save_collection.parameters.name ｜ 藏品名称
-  'save_collection.parameters.name': `藏品名称`,
+  'save_collection.parameters.name': `藏品名称。`,
 
   // save_collection.parameters.status ｜ 藏品状态
   'save_collection.parameters.status': `状态：已拥有 | 待补款 | 购物车`,
@@ -43,43 +43,43 @@ export const prompts = {
   'save_collection.parameters.kind': `类型：手办 | 立牌 | 抱枕 | 挂画 | 徽章 | 其他`,
 
   // save_collection.parameters.price ｜ 花销
-  'save_collection.parameters.price': `藏品的开销`,
+  'save_collection.parameters.price': `藏品的开销。`,
 
   // save_collection.parameters.price.total ｜ 总价
-  'save_collection.parameters.price.total': `总价`,
+  'save_collection.parameters.price.total': `总价。`,
 
   // save_collection.parameters.price.deposit ｜ 定金
-  'save_collection.parameters.price.deposit': `定金`,
+  'save_collection.parameters.price.deposit': `定金。`,
 
   // save_collection.parameters.price.balance ｜ 尾款
-  'save_collection.parameters.price.balance': `尾款`,
+  'save_collection.parameters.price.balance': `尾款。`,
 
   // save_collection.parameters.orderedAt ｜ 下单时间
-  'save_collection.parameters.orderedAt': `下单时间，yyyy-mm-dd 格式`,
+  'save_collection.parameters.orderedAt': `下单时间，yyyy-mm-dd 格式。`,
 
   // save_collection.parameters.balanceDueAt ｜ 补尾款时间
-  'save_collection.parameters.balanceDueAt': `补尾款时间或预计补款月份，yyyy-mm-dd 或 yyyy-mm 格式`,
+  'save_collection.parameters.balanceDueAt': `补尾款时间或预计补款月份，yyyy-mm-dd 或 yyyy-mm 格式。`,
 
   // save_collection.parameters.arrivesAt ｜ 到货时间
-  'save_collection.parameters.arrivesAt': `到货时间，yyyy-mm-dd 格式`,
+  'save_collection.parameters.arrivesAt': `到货时间，yyyy-mm-dd 格式。`,
 
   // save_collection.parameters.motivation ｜ 心情：当初为什么想买
-  'save_collection.parameters.motivation': `用户买的理由`,
+  'save_collection.parameters.motivation': `用户买的理由。`,
 
   // save_collection.parameters.photos ｜ 照片数组：排序口径、一张一描述，以及「省略=保留 / 空数组=没有」这条关键语义
-  'save_collection.parameters.photos': `按身体部位顺序排列的照片，每张附带一句描述。更新旧档案时省略表示保留原有照片，传空数组表示这件没有照片`,
+  'save_collection.parameters.photos': `按身体部位顺序排列的照片，每张附带一句描述。更新旧档案时省略表示保留原有照片，传空数组表示这件没有照片。`,
 
   // save_collection.parameters.photos.part ｜ 单张照片拍的是哪个部位
-  'save_collection.parameters.photos.part': `照片拍摄的部位`,
+  'save_collection.parameters.photos.part': `照片拍摄的部位。`,
 
   // save_collection.parameters.photos.description ｜ 单张照片的一句话描述
-  'save_collection.parameters.photos.description': `用户对图片的描述`,
+  'save_collection.parameters.photos.description': `用户对图片的描述。`,
 
   // save_collection.parameters.photos.path ｜ 图片路径：从哪抄这个路径，别自己拼
   'save_collection.parameters.photos.path': `上传图片的文件路径，工作区相对路径或绝对路径。`,
 
   // save_collection.parameters.notes ｜ 备注
-  'save_collection.parameters.notes': `你自己的评价或想法，想点评或者有什么想说的都可以写这里`,
+  'save_collection.parameters.notes': `你自己的评价或想法，想点评或者有什么想说的可以写这里。`,
 
   // save_collection.parameters.overwriteId ｜ 覆盖更新：把已有 id 传进来，省略就是新建
   'save_collection.parameters.overwriteId': `要覆盖更新的已有藏品 id；新建时省略。`,
