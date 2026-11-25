@@ -1,8 +1,8 @@
 /**
- * tool-collection-list — 列出收藏库里每件藏品的名字和 id。
+ * tool-collection-list — 列出收藏库里每件藏品的名字、id 和状态。
  *
- * 只读、无参数、只返回 `{ name, id }` 两项：模型拿它挑「要改哪一件」，
- * 或者回答「我都收藏了什么」。完整档案仍由 save_collection 写入，
+ * 只读、无参数、每件藏品一行：`名字：“…”，id：…，状态：…`。模型拿它挑
+ * 「要改哪一件」，或者回答「我都收藏了什么」。完整档案仍由 save_collection 写入，
  * 读取路径与报错分类都在 ../lib/archive.mjs。
  *
  * 一个工具一个目录：这里只放 list_collection 的行为，能发给模型的每一句话
@@ -10,6 +10,7 @@
  */
 import { archivePathsOf, readArchive, workspaceOf } from '../lib/archive.mjs'
 import { createPrompt, format } from '../lib/prompt.mjs'
+import { optionalText } from '../lib/values.mjs'
 import { prompts } from './prompts.mjs'
 
 /** Stable Loader identity. */
@@ -35,7 +36,7 @@ export function apply(ctx, config) {
       properties: {},
     },
     output: {
-      // 只有名字和 id：调用方要的就是「挑哪一件」，别把整份档案倒给模型。
+      // 只给「挑哪一件」要看的三项：名字、id、状态，别把整份档案倒给模型。
       schema: {
         type: 'array',
         items: {
@@ -44,8 +45,9 @@ export function apply(ctx, config) {
           properties: {
             name: { type: 'string' },
             id: { type: 'string' },
+            status: { type: 'string' },
           },
-          required: ['name', 'id'],
+          required: ['name', 'id', 'status'],
         },
       },
       render: (_args, items) => [{
@@ -66,7 +68,8 @@ export function apply(ctx, config) {
         const id = entry.id === undefined || entry.id === null ? '' : String(entry.id).trim()
         if (id === '') continue
         const itemName = typeof entry.name === 'string' && entry.name.trim() !== '' ? entry.name.trim() : prompt('words.nameless')
-        listed.push({ name: itemName, id })
+        const status = optionalText(entry.status) ?? prompt('words.noStatus')
+        listed.push({ name: itemName, id, status })
       }
       return listed
     },

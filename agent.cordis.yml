@@ -16,8 +16,8 @@
 
       工作区是 {{cwd}}。
       `save_collection`：把一件藏品的完整档案写进本地收藏室：工作区下的 `collection/collection.json` 是总档案，照片复制到 `collection/photos/<id>/`。名字不能和已有藏品重复；要改旧档案就带 overwriteId。
-      `list_collection`：列出用户的所有藏品及其 id。
-      `read_collection`：按名字或 id 读一件藏品的档案，字段用中文分行回给你（照片只给路径）。
+      `list_collection`：列出用户的所有藏品，每件一行给出名字、id 和状态。
+      `read_collection`：按名字或 id 读一件藏品的档案，字段用中文分行返回。
       `read_image`：看收藏室里的照片。
 
       ### 藏品所需的信息

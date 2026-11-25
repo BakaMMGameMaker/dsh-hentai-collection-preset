@@ -13,7 +13,7 @@ plugins/
     index.mjs              save_collection：工具定义 + 行为
     prompts.mjs            它自己的词典：会发给模型的每一句话
   list-collection/
-    index.mjs              list_collection：只返回 list<name, id>
+    index.mjs              list_collection：每件一行「名字 / id / 状态」
     prompts.mjs            它自己的词典
   read-collection/
     index.mjs              read_collection：按 name 或 id 读一件，字段名换回中文

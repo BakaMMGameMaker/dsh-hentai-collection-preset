@@ -23,20 +23,23 @@ export const prompts = {
   // ── 工具总述 ──────────────────────────────────────────────────────────────
 
   // list_collection.description ｜ 模型靠它判断「什么时候该列一览、拿到 id 干什么」
-  'list_collection.description': `列出收藏库里每件藏品的名字和 id（每行「名字 · id」，按入库顺序）。调它可拿藏品 id；想看完整档案就用 read_collection 按名字或 id 读。`,
+  'list_collection.description': `列出收藏库里每件藏品的名字、id 和状态（每行「名字：“…”，id：…，状态：…」，按入库顺序）。调它可拿藏品 id；想看完整档案就用 read_collection 按名字或 id 读。`,
 
   // ── 成功返回的文本（会进对话历史）─────────────────────────────────────────
 
   // result.empty ｜ 收藏库还没有任何藏品
   'result.empty': `（收藏库还是空的）`,
 
-  // result.line ｜ 一件藏品一行：{name} 名字，{id} 覆盖更新时要传的 id
-  'result.line': `{name} · {id}`,
+  // result.line ｜ 一件藏品一行：{name} 名字，{id} 覆盖更新时要传的 id，{status} 已拥有/待补款/购物车
+  'result.line': `名字：“{name}”，id：{id}，状态：{status}`,
 
   // ── 报错正文 ──────────────────────────────────────────────────────────────
 
   // words.nameless ｜ 档案里 name 缺失时顶上的名字
   'words.nameless': `（未命名）`,
+
+  // words.noStatus ｜ 档案里 status 缺失时顶上的状态
+  'words.noStatus': `（未标状态）`,
 
   // errors.readArchive ｜ 读总档案失败（非「文件不存在」）—— 公用的 lib/archive.mjs 会来取这条
   'errors.readArchive': `读取收藏库失败：{path}（{message}）`,
