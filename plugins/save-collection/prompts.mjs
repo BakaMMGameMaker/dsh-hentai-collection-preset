@@ -73,7 +73,7 @@ export const prompts = {
   'save_collection.parameters.photos.part': `照片拍摄的部位。`,
 
   // save_collection.parameters.photos.description ｜ 单张照片的一句话描述
-  'save_collection.parameters.photos.description': `用户对图片的描述。`,
+  'save_collection.parameters.photos.description': `用户或你的发情感想，不是图片内容。`,
 
   // save_collection.parameters.photos.path ｜ 图片路径：从哪抄这个路径，别自己拼
   'save_collection.parameters.photos.path': `上传图片的文件路径，工作区相对路径或绝对路径。`,

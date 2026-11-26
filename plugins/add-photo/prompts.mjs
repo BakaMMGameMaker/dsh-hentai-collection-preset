@@ -40,7 +40,7 @@ export const prompts = {
   'add_photo.parameters.part': `这张照片拍的是哪个部位。同一部位可以传多次，收藏库会排号。`,
 
   // add_photo.parameters.description ｜ 用户的一句话描述
-  'add_photo.parameters.description': `用户对这张图的描述。`,
+  'add_photo.parameters.description': `用户或你的发情感想，不是图片内容。`,
 
   // add_photo.parameters.filePath ｜ 图片从哪来：抄消息里那条只读路径，别自己拼
   'add_photo.parameters.filePath': `要加的图片路径：消息里上传的图片会带一段 "Normalized copy (read-only; …): " 的只读路径，抄那串就行；工作区相对路径、绝对路径、档案里已有的 photos/<id>/… 也都认。`,
