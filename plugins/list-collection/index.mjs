@@ -5,10 +5,11 @@
  * 「要改哪一件」，或者回答「我都收藏了什么」。完整档案仍由 save_collection 写入，
  * 读取路径与报错分类都在 ../lib/archive.mjs。
  *
- * 一个工具一个目录：这里只放 list_collection 的行为，能发给模型的每一句话
- * 都在同目录的 prompts.mjs 里。公用的文本无关函数在 ../lib/。
+ * 一个工具一个目录：这里只放 list_collection 的行为。能发给模型的每一句话在同目录的
+ * prompts.mjs 里，空库与「未命名」这类公用词从 ../lib/archive.prompts.mjs 并进来。
  */
 import { archivePathsOf, readArchive, workspaceOf } from '../lib/archive.mjs'
+import { itemId } from '../lib/items.mjs'
 import { createPrompt, format } from '../lib/prompt.mjs'
 import { optionalText } from '../lib/values.mjs'
 import { prompts } from './prompts.mjs'
@@ -53,7 +54,7 @@ export function apply(ctx, config) {
       render: (_args, items) => [{
         type: 'text',
         text: items.length === 0
-          ? prompt('result.empty')
+          ? prompt('words.emptyLibrary')
           : items.map((item) => format(prompt('result.line'), item)).join('\n'),
       }],
     },
@@ -63,11 +64,10 @@ export function apply(ctx, config) {
       const library = await readArchive(archivePath, prompt)
       const listed = []
       for (const entry of library.items) {
-        if (entry === null || typeof entry !== 'object') continue
         // 没有 id 的条目挑不了、也覆盖不了，列出来只会误导；手改坏的档案按这条跳过。
-        const id = entry.id === undefined || entry.id === null ? '' : String(entry.id).trim()
-        if (id === '') continue
-        const itemName = typeof entry.name === 'string' && entry.name.trim() !== '' ? entry.name.trim() : prompt('words.nameless')
+        const id = itemId(entry)
+        if (id === null) continue
+        const itemName = optionalText(entry.name) ?? prompt('words.nameless')
         const status = optionalText(entry.status) ?? prompt('words.noStatus')
         listed.push({ name: itemName, id, status })
       }

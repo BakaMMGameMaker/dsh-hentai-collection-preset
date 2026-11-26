@@ -20,11 +20,13 @@
  * 是附件管线的活，所以任何尺寸的图都只要登记一次。
  *
  * 一个工具一个目录：这里只放 read_image 的行为，能发给模型的每一句话
- * 都在同目录的 prompts.mjs 里。公用的文本无关函数在 ../lib/。
+ * 都在同目录的 prompts.mjs 里。找图的路径候选与「第一个存在的普通文件」在
+ * ../lib/photos.mjs，与两个存档工具共用同一套规则，所以存进去时怎么找、这里就怎么找。
  */
-import { readdir, readFile, stat } from 'node:fs/promises'
-import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { readdir, readFile } from 'node:fs/promises'
+import { basename, isAbsolute, join, relative, sep } from 'node:path'
 import { archivePathsOf, workspaceOf } from '../lib/archive.mjs'
+import { firstFile, photoCandidates } from '../lib/photos.mjs'
 import { createPrompt, format } from '../lib/prompt.mjs'
 import { describe, optionalText } from '../lib/values.mjs'
 import { prompts } from './prompts.mjs'
@@ -86,7 +88,8 @@ export function apply(ctx, config) {
         if (given === null) throw new Error(prompt('errors.emptyPath'))
         const cwd = workspaceOf(exec)
         const { libraryRoot } = archivePathsOf(config, cwd)
-        const candidates = candidatePaths(given, libraryRoot, cwd)
+        // 看图先在收藏库根找：档案里 `photos[].file` 就是相对收藏库的写法。
+        const candidates = photoCandidates(given, { libraryRoot, cwd, prefer: 'library' })
         const file = await firstFile(candidates)
         if (file === undefined) throw await notFoundError(given, candidates, libraryRoot)
 
@@ -184,39 +187,6 @@ function sniffMediaType(data) {
   if (ascii(0, 'GIF87a') || ascii(0, 'GIF89a')) return 'image/gif'
   if (ascii(0, 'RIFF') && ascii(8, 'WEBP')) return 'image/webp'
   return null
-}
-
-/**
- * 一种写法展开成按优先级排的候选绝对路径（去重）。
- * @param given - 模型传进来的 path。
- * @param libraryRoot - 收藏库根目录绝对路径。
- * @param cwd - 会话工作区绝对路径。
- * @returns 要依次尝试的绝对路径。
- */
-function candidatePaths(given, libraryRoot, cwd) {
-  if (isAbsolute(given)) return [resolve(given)]
-  // Windows 上模型常把 `/` 和 `\` 混着写；这里只归一化分隔符，不碰盘符。
-  const normalized = given.replace(/\\/g, '/').replace(/^\.\/+/, '')
-  const candidates = [
-    resolve(libraryRoot, normalized),
-    resolve(cwd, normalized),
-    resolve(libraryRoot, 'photos', normalized),
-  ]
-  return [...new Set(candidates)]
-}
-
-/**
- * 依次 stat 候选路径，返回第一个**普通文件**；都不存在时返回 undefined。
- * 目录不算命中：把「photos/<id>」当图片读是常见手误，交给 notFound 的清单去纠正。
- * @param candidates - 候选绝对路径，按优先级排好。
- * @returns 命中的路径和字节数，或 undefined。
- */
-async function firstFile(candidates) {
-  for (const candidate of candidates) {
-    const info = await stat(candidate).catch(() => undefined)
-    if (info !== undefined && info.isFile()) return { path: candidate, size: info.size }
-  }
-  return undefined
 }
 
 /**

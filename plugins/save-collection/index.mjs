@@ -6,15 +6,16 @@
  *   <cwd>/collection/collection.json     总档案，一件藏品一条记录
  *   <cwd>/collection/photos/<itemId>/    照片，重命名成 01-<部位>.<ext>
  *
- * 一个工具一个目录：这里只放 save_collection 的行为，能发给模型的每一句话
- * 都在同目录的 prompts.mjs 里。公用的文本无关函数在 ../lib/。
+ * 一个工具一个目录：这里只放 save_collection 的行为。能发给模型的每一句话在
+ * 同目录的 prompts.mjs 里，照片字段与照片落盘的说法则是公用词
+ * （../lib/photos.prompts.mjs，add_photo 也并了同一本）。照片怎么找、怎么落盘在
+ * ../lib/photos.mjs，两个存档工具共用，所以两边写出来的照片不会有两种排法。
  */
-import { mkdir, stat } from 'node:fs/promises'
-import { isAbsolute, join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { archivePathsOf, readArchive, workspaceOf, writeArchive, ARCHIVE_VERSION } from '../lib/archive.mjs'
 import { itemId, nameKey } from '../lib/items.mjs'
-import { copyIntoTarget, imageExtension, photoFilename, samePath } from '../lib/photos.mjs'
-import { createPrompt, format } from '../lib/prompt.mjs'
+import { copyPhotoInto, imageExtension, photoFilename, requirePhotoSource } from '../lib/photos.mjs'
+import { createPrompt, format, requiredText } from '../lib/prompt.mjs'
 import { asRecord, optionalText } from '../lib/values.mjs'
 import { prompts } from './prompts.mjs'
 
@@ -23,15 +24,8 @@ export const name = 'tool-collection-save'
 
 export const inject = ['tools']
 
-/** 本工具的词典。改措辞只改 prompts.mjs。 */
+/** 本工具的词典。改措辞只改 prompts.mjs（公用那几句在 ../lib/*.prompts.mjs）。 */
 const prompt = createPrompt(prompts, 'save-collection/prompts.mjs')
-
-/** 必填文本缺失时按字典报错；label 由调用方从 labels.* 取。 */
-function requiredText(value, label) {
-  const text = optionalText(value)
-  if (text === null) throw new Error(format(prompt('errors.requiredField'), { label }))
-  return text
-}
 
 /**
  * 注册 `save_collection`。
@@ -70,9 +64,11 @@ export function apply(ctx, config) {
             type: 'object',
             additionalProperties: false,
             properties: {
-              part: { type: 'string', description: prompt('save_collection.parameters.photos.part') },
-              description: { type: 'string', description: prompt('save_collection.parameters.photos.description') },
-              path: { type: 'string', description: prompt('save_collection.parameters.photos.path') },
+              // 三个字段的说法与 add_photo 的 part / description / path 是同一份
+              // （../lib/photos.prompts.mjs），模型在两个工具里看到的是同一段话。
+              part: { type: 'string', description: prompt('photos.parameters.part') },
+              description: { type: 'string', description: prompt('photos.parameters.description') },
+              path: { type: 'string', description: prompt('photos.parameters.path') },
             },
             required: ['part', 'description', 'path'],
           },
@@ -106,8 +102,8 @@ export function apply(ctx, config) {
       const { libraryRoot, archivePath } = archivePathsOf(config, cwd)
       const now = new Date()
 
-      const itemName = requiredText(input.name, prompt('labels.name'))
-      const status = requiredText(input.status, prompt('labels.status'))
+      const itemName = requiredText(prompt, input.name, prompt('labels.name'))
+      const status = requiredText(prompt, input.status, prompt('labels.status'))
       const kind = optionalText(input.kind)
       const notes = optionalText(input.notes)
       const motivation = optionalText(input.motivation)
@@ -222,13 +218,7 @@ export function apply(ctx, config) {
   })
 }
 
-/**
- * 名字不能和别的藏品重复：read_collection 按名字挑，重名就分不清是哪一件。
- * 覆盖更新时跳过被更新的那件自身；比较口径见 ../lib/items.mjs（去掉空白、忽略大小写）。
- * @param items - 档案的 items 数组。
- * @param wanted - 这次要存的名字（已 trim、非空）。
- * @param existing - 被更新的那件记录，新建时是 undefined。
- */
+/** 名字不能和别的藏品重复：read_collection 按名字挑，重名就分不清是哪一件。 */
 function ensureUniqueName(items, wanted, existing) {
   const key = nameKey(wanted)
   const clash = items.find((entry) => entry !== existing
@@ -266,41 +256,36 @@ function freshId(items, now) {
   throw new Error(prompt('errors.tooManyInSecond'))
 }
 
-/** 先确认每张照片都在，再复制进收藏库，最后返回写进档案的条目。 */
+/**
+ * 先确认每张照片都在（路径、后缀、文件名一次定好），再统一复制进收藏库。
+ * 复制这一步在 ../lib/photos.mjs 的 copyPhotoInto 里，与 add_photo 共用。
+ * @param options - `cwd` 工作区；`libraryRoot` 收藏库根；`id` 这件藏品的 id；
+ *   `index` 模型传进来的 photos 数组。
+ * @returns `{ entries, directory }`：要写进档案的照片条目与照片目录。
+ */
 async function storePhotos({ cwd, libraryRoot, id, index }) {
+  const directory = join(libraryRoot, 'photos', id)
   const entries = []
   const copies = []
+  // 先把每张都定下来再复制：某一张路径写错时，不会只落了一半照片在收藏库里。
   for (let position = 0; position < index.length; position += 1) {
     const photo = asRecord(index[position])
-    const part = requiredText(photo.part, format(prompt('labels.photos.part'), { index: position }))
-    const description = requiredText(photo.description, format(prompt('labels.photos.description'), { index: position }))
-    const given = requiredText(photo.path, format(prompt('labels.photos.path'), { index: position }))
-    const sourcePath = isAbsolute(given) ? given : resolve(cwd, given)
-    let info
-    try {
-      info = await stat(sourcePath)
-    } catch {
-      throw new Error(format(prompt('errors.photoMissing'), { given, resolved: sourcePath }))
-    }
-    if (!info.isFile()) throw new Error(format(prompt('errors.photoNotFile'), { given }))
-    const extension = await imageExtension(sourcePath)
+    const part = requiredText(prompt, photo.part, photoLabel('photos.labels.part', position))
+    const description = requiredText(prompt, photo.description, photoLabel('photos.labels.description', position))
+    const given = requiredText(prompt, photo.path, photoLabel('photos.labels.path', position))
+    const source = await requirePhotoSource(given, { libraryRoot, cwd, prompt })
+    const extension = await imageExtension(source.path)
     const filename = photoFilename(position + 1, part, extension)
-    copies.push({ sourcePath, filename })
+    copies.push({ source: source.path, target: join(directory, filename), given })
     entries.push({ order: position + 1, part, description, file: `photos/${id}/${filename}` })
   }
-
-  const directory = join(libraryRoot, 'photos', id)
-  if (copies.length > 0) {
-    await mkdir(directory, { recursive: true })
-    for (const copy of copies) {
-      const target = join(directory, copy.filename)
-      // 更新旧档案时，模型常把 collection.json 里的照片路径原样传回来，
-      // 那时源就是目标：拷自己只会白跑一趟，在 Windows 上还会直接失败。
-      if (samePath(copy.sourcePath, target)) continue
-      await copyIntoTarget(copy.sourcePath, target)
-    }
-  }
+  for (const copy of copies) await copyPhotoInto({ ...copy, prompt })
   return { entries, directory }
+}
+
+/** 第 index 张照片的某个字段在报错里怎么写（`photos[0].part（部位）`）。 */
+function photoLabel(key, index) {
+  return format(prompt('save_collection.labels.inArray'), { label: prompt(key), index })
 }
 
 /** 金额：容忍「¥300」「300元」；「暂无」之类记成 null。币种恒为人民币，不入档。 */

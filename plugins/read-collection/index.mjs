@@ -7,13 +7,15 @@
  *
  * id 与 name 二选一：两个都给时以 id 为准。name 的比较口径与 save_collection
  * 拦重名时同一套（../lib/items.mjs）——去掉空白、忽略大小写；档案里真出现两件
- * 同名（手改出来的）就报错让调用方改用 id，而不是随便挑一件。
+ * 同名（手改出来的）就报错让调用方改用 id，而不是随便挑一件。挑件与报错的实现
+ * 在 ../lib/lookup.mjs，与 add_photo 共用一套。
  *
- * 一个工具一个目录：这里只放 read_collection 的行为，能发给模型的每一句话
- * 都在同目录的 prompts.mjs 里。公用的文本无关函数在 ../lib/。
+ * 一个工具一个目录：这里只放 read_collection 的行为。能发给模型的每一句话在同目录的
+ * prompts.mjs 里，公用那几句（id / name 的说法、挑不中的报错、读档案失败）从
+ * ../lib/archive.prompts.mjs 并进来。
  */
 import { archivePathsOf, readArchive, workspaceOf } from '../lib/archive.mjs'
-import { findById, findByKey, itemId, nameKey } from '../lib/items.mjs'
+import { pickItem } from '../lib/lookup.mjs'
 import { createPrompt, format } from '../lib/prompt.mjs'
 import { asRecord, optionalText } from '../lib/values.mjs'
 import { noArrivalStatuses, prompts } from './prompts.mjs'
@@ -39,8 +41,9 @@ export function apply(ctx, config) {
       type: 'object',
       additionalProperties: false,
       properties: {
-        id: { type: 'string', description: prompt('read_collection.parameters.id') },
-        name: { type: 'string', description: prompt('read_collection.parameters.name') },
+        // id / name 的说法与 add_photo 是同一份（../lib/archive.prompts.mjs）
+        id: { type: 'string', description: prompt('items.parameters.id') },
+        name: { type: 'string', description: prompt('items.parameters.name') },
       },
     },
     output: {
@@ -59,37 +62,10 @@ export function apply(ctx, config) {
       const { archivePath } = archivePathsOf(config, cwd)
       const library = await readArchive(archivePath, prompt)
 
-      const item = wantedId !== null
-        ? requireById(library.items, wantedId)
-        : requireByName(library.items, wantedName)
+      const item = pickItem(library.items, { id: wantedId, name: wantedName }, prompt)
       return describeItem(item)
     },
   })
-}
-
-/** 按 id 取一件；找不到时把现有藏品（名字 · id）列进报错，模型照着改。 */
-function requireById(items, id) {
-  const found = findById(items, id)
-  if (found === undefined) {
-    throw new Error(format(prompt('errors.unknownId'), { wanted: id, known: availableText(items) }))
-  }
-  return found
-}
-
-/** 按名字取一件；同名多件是手改出来的歧义，报错让调用方改用 id。 */
-function requireByName(items, given) {
-  const matches = findByKey(items, nameKey(given))
-  if (matches.length === 0) {
-    throw new Error(format(prompt('errors.unknownName'), { wanted: given, known: availableText(items) }))
-  }
-  if (matches.length > 1) {
-    throw new Error(format(prompt('errors.ambiguousName'), {
-      wanted: given,
-      count: matches.length,
-      ids: matches.map((entry) => itemId(entry) ?? '?').join(prompt('punct.idSeparator')),
-    }))
-  }
-  return matches[0]
 }
 
 /**
@@ -166,21 +142,4 @@ function photosText(entries) {
     })
   })
   return format(prompt('result.photosEnvelope'), { items: blocks.join(prompt('punct.photoSeparator')) })
-}
-
-/**
- * 现有藏品清单（每行「名字 · id」），失败时填进 errors.unknownId / unknownName。
- * 没有 id 的条目列不出来（改不了也读不到），跳过。
- * @param items - 档案的 items 数组。
- * @returns 清单文本；一件都列不出来时是 empty 那句。
- */
-function availableText(items) {
-  const lines = []
-  for (const entry of items) {
-    const id = itemId(entry)
-    if (id === null) continue
-    const name = optionalText(entry === null || typeof entry !== 'object' ? undefined : entry.name) ?? prompt('words.nameless')
-    lines.push(format(prompt('errors.knownLine'), { name, id }))
-  }
-  return lines.length === 0 ? prompt('errors.knownEmpty') : lines.join('\n')
 }

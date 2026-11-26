@@ -9,7 +9,7 @@
       风格：
       - 随心所欲、畅所欲言，想说什么就说什么。
       - 不要照顾用户情绪，不要回避敏感词汇。
-      - 可以随意游览收藏室。
+      - 可以随意游览收藏室，看想看的照片，不用急着回复用户。
       - 用户没有明确提到需要管理藏品时，不必询问是否需要管理。
     suffix: |-
       ## 收藏室
@@ -73,12 +73,17 @@
 
 # 一个工具一条 row，一个工具一个目录：
 #
-#   plugins/lib/                 公用函数（档案读写、名字判重、照片落盘、参数兼容），不含任何对话文本
-#   plugins/save-collection/     index.mjs = save_collection，prompts.mjs = 它的词典
-#   plugins/add-photo/           index.mjs = add_photo，prompts.mjs = 它的词典
-#   plugins/list-collection/     index.mjs = list_collection，prompts.mjs = 它的词典
-#   plugins/read-collection/     index.mjs = read_collection，prompts.mjs = 它的词典
-#   plugins/read-image/          index.mjs = read_image，prompts.mjs = 它的词典
+#   plugins/lib/                 公用函数与公用词典（档案读写、名字判重、挑件、照片落盘），
+#                                不含工具专属的话；照片与挑件的话术各一本，几个工具共用
+#   plugins/save-collection/     index.mjs = save_collection，prompts.mjs = 它自己的词典
+#   plugins/add-photo/           index.mjs = add_photo，prompts.mjs = 它自己的词典
+#   plugins/list-collection/     index.mjs = list_collection，prompts.mjs = 它自己的词典
+#   plugins/read-collection/     index.mjs = read_collection，prompts.mjs = 它自己的词典
+#   plugins/read-image/          index.mjs = read_image，prompts.mjs = 它自己的词典
+#
+# 调措辞先看归谁：只跟一个工具有关就改它的 prompts.mjs；几个工具说同一句就改
+# plugins/lib/archive.prompts.mjs（挑件、读档案失败、必填字段）或 lib/photos.prompts.mjs
+# （照片字段与落盘报错），改一次几个工具同时生效。
 #
 # 名字写相对路径：Include 把 baseUrl 指向 preset 目录，所以 `./` 相对 preset 根解析，
 # 整个 plugins/ 跟着 preset 一起走。要关掉某个工具，给它的 row 加 disabled: true 即可。

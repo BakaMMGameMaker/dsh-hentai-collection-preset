@@ -1,20 +1,26 @@
 /**
  * save_collection 的提示词词典
  *
- * 这里是唯一存放「save_collection 会发给模型的文本」的地方。同目录的 index.mjs
- * 只按 `prompt('键')` 取字符串，不内联任何中文，所以调措辞只改这一个文件。
- * 另一个工具 list_collection 的字典在 ../list-collection/prompts.mjs，两个文件互不影响。
+ * 这里只放「save_collection 自己那几句话」。会发给模型的文本有两个来源：
+ *   - 本工具自己的：下面这个对象（工具总述、自己那几个字段、成功摘要、自己的报错）
+ *   - 几个工具共用的：../lib/archive.prompts.mjs（读档案失败、必填字段、空收藏库）
+ *     和 ../lib/photos.prompts.mjs（照片字段、照片落盘报错），用 `...` 并进来
+ *
+ * 所以调措辞先看这句话归谁：只跟 save_collection 有关就改本文件；几个工具都这么说
+ * 就改 lib/ 下那两本词典，改一次两边同时生效，不用对稿。
+ *
+ * 同目录的 index.mjs 只按 `prompt('键')` 取字符串，不内联任何中文。
  *
  * 键名就是发送位置：
  *   save_collection.description        工具总述（请求体 tools 数组里的 function.description）
- *   save_collection.parameters.<field> 该字段在 JSON Schema 里的 description
+ *   save_collection.parameters.<字段>  该字段在 JSON Schema 里的 description
+ *   save_collection.labels.inArray     报错里指代「第几张照片的某个字段」的外层写法
+ *   photos.* / items.* / errors.* / words.* / punct.*
+ *                                      公用词典并进来的（见上面两本）
  *   result.*                           工具成功时返回的摘要（会进对话历史）
- *   labels.*                           报错里指代字段用的名字
+ *   labels.*                           报错里指代本工具字段用的名字
  *   errors.*                           抛错文本（模型看到的是 "Error: …"）
  *   words.* / punct.*                  夹在句子里的零碎词
- *
- * 其中三条 errors.* 是公用代码 ../lib/archive.mjs 读档案失败时取的
- * （readArchive 会带着这本字典来查）：readArchive、archiveNotJson、archiveShape。
  *
  * 记法：`{名字}` 是运行时填进去的占位符，别删；其余文字原样发送。
  *
@@ -25,7 +31,13 @@
  *
  * 改完要重新加载 preset 才生效：工具描述在注册那一刻就已经进了请求。
  */
+import { archivePrompts } from '../lib/archive.prompts.mjs'
+import { photoPrompts } from '../lib/photos.prompts.mjs'
+
 export const prompts = {
+  ...archivePrompts,
+  ...photoPrompts,
+
   // ── 工具总述 ──────────────────────────────────────────────────────────────
 
   // save_collection.description ｜ 模型靠它判断「要不要调这个工具、什么时候调、一次传多少」
@@ -66,17 +78,9 @@ export const prompts = {
   // save_collection.parameters.motivation ｜ 心情：当初为什么想买
   'save_collection.parameters.motivation': `用户买的理由。`,
 
-  // save_collection.parameters.photos ｜ 照片数组：排序口径、一张一描述，以及「省略=保留 / 空数组=没有」这条关键语义
+  // save_collection.parameters.photos ｜ 照片数组：排序口径，以及「省略=保留 / 空数组=没有」这条关键语义
+  // （单张照片的 part / description / path 说法是公用的，在 ../lib/photos.prompts.mjs）
   'save_collection.parameters.photos': `按身体部位顺序排列的照片，每张附带一句描述。更新旧档案时省略表示保留原有照片，传空数组表示这件没有照片。`,
-
-  // save_collection.parameters.photos.part ｜ 单张照片拍的是哪个部位
-  'save_collection.parameters.photos.part': `照片拍摄的部位。`,
-
-  // save_collection.parameters.photos.description ｜ 单张照片的一句话描述
-  'save_collection.parameters.photos.description': `用户或你的发情感想，不是图片内容。`,
-
-  // save_collection.parameters.photos.path ｜ 图片路径：从哪抄这个路径，别自己拼
-  'save_collection.parameters.photos.path': `上传图片的文件路径，工作区相对路径或绝对路径。`,
 
   // save_collection.parameters.notes ｜ 备注
   'save_collection.parameters.notes': `你自己的评价或想法，想点评或者有什么想说的可以写这里。`,
@@ -84,7 +88,7 @@ export const prompts = {
   // save_collection.parameters.overwriteId ｜ 覆盖更新：把已有 id 传进来，省略就是新建
   'save_collection.parameters.overwriteId': `要覆盖更新的已有藏品 id；新建时省略。`,
 
-  // ── 成功返回的摘要（会进对话历史）─────────────────
+  // ── 成功返回的摘要（会进对话历史）─────────────────────────────────────────
 
   // result.head ｜ 新建成功的第一行：名字、状态、类型
   'result.head': `已存档：{name}（{status}{kind}）`,
@@ -112,20 +116,14 @@ export const prompts = {
 
   // ── 报错里的字段名 ────────────────────────────────────────────────────────
 
+  // save_collection.labels.inArray ｜ 第几张照片的某个字段：{label} 是 photos.labels.* 之一
+  'save_collection.labels.inArray': `photos[{index}].{label}`,
+
   // labels.name ｜ 报错里指代 name
   'labels.name': `name（藏品名字）`,
 
   // labels.status ｜ 报错里指代 status
   'labels.status': `status（状态）`,
-
-  // labels.photos.part ｜ 报错里指代第几张照片的部位；{index} 从 0 开始
-  'labels.photos.part': `photos[{index}].part（部位）`,
-
-  // labels.photos.description ｜ 报错里指代第几张照片的描述
-  'labels.photos.description': `photos[{index}].description（图片描述）`,
-
-  // labels.photos.path ｜ 报错里指代第几张照片的路径
-  'labels.photos.path': `photos[{index}].path（图片路径）`,
 
   // labels.price.total ｜ 报错里指代 price.total
   'labels.price.total': `price.total`,
@@ -138,26 +136,8 @@ export const prompts = {
 
   // ── 报错正文 ──────────────────────────────────────────────────────────────
 
-  // errors.requiredField ｜ 必填字段缺失（{label} 由 labels.* 提供）
-  'errors.requiredField': `缺少必填字段 {label}`,
-
   // errors.photosNotArray ｜ photos 传了非数组
   'errors.photosNotArray': `photos 必须是数组：每项含 part、description、path`,
-
-  // errors.readArchive ｜ 读总档案失败（非「文件不存在」）—— 公用的 lib/archive.mjs 会来取这条
-  'errors.readArchive': `读取收藏库失败：{path}（{message}）`,
-
-  // errors.archiveNotJson ｜ 总档案不是合法 JSON，拒绝写入以免覆盖旧档 —— 公用的 lib/archive.mjs 会来取这条
-  'errors.archiveNotJson': `收藏库文件不是合法 JSON，已停止写入以免覆盖旧档案：{path}。备份并修复或移走该文件再重试。`,
-
-  // errors.archiveShape ｜ 总档案结构异常 —— 公用的 lib/archive.mjs 会来取这条
-  'errors.archiveShape': `收藏库文件结构异常（缺少 items 数组），已停止写入：{path}`,
-
-  // errors.photoMissing ｜ 照片路径找不到：提示模型去抄消息里那条只读路径
-  'errors.photoMissing': `找不到照片文件：{given}（解析为 {resolved}）。确认图片的真实路径，或让用户重新上传。`,
-
-  // errors.photoNotFile ｜ 路径存在但不是普通文件
-  'errors.photoNotFile': `照片路径不是普通文件：{given}`,
 
   // errors.amountNotNumber ｜ 金额不是有限数字
   'errors.amountNotNumber': `{label} 不是有效数字`,
@@ -168,7 +148,7 @@ export const prompts = {
   // errors.amountType ｜ 金额既不是数字也不是字符串
   'errors.amountType': `{label} 必须是数字或可识别的金额文本`,
 
-  // errors.unknownId ｜ overwriteId 指向不存在的藏品（{known} 由 words.emptyLibrary 兜底）
+  // errors.unknownId ｜ overwriteId 指向不存在的藏品（覆盖公用那本：这里要带上「新建就省略」的提示）
   'errors.unknownId': `没有 id 为 {wanted} 的藏品，现有 id：{known}。新建一件请省略 overwriteId。`,
 
   // errors.duplicateName ｜ 新建时名字撞了已有藏品，但那件连 id 都没有（手改坏的档案）
@@ -179,7 +159,4 @@ export const prompts = {
 
   // errors.tooManyInSecond ｜ 同一秒内 id 用尽
   'errors.tooManyInSecond': `同一秒内创建的藏品过多，请稍后重试`,
-
-  // words.emptyLibrary ｜ 收藏库为空时填进 errors.unknownId 的 {known}
-  'words.emptyLibrary': `（收藏库还是空的）`,
 }
